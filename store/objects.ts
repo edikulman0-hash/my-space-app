@@ -1,32 +1,41 @@
-// stores/objects.ts
-import { defineStore } from 'pinia';
+import { create } from 'zustand';
 
 export interface SpaceObject {
   id: string;
   name: string;
   type: 'Asteroid' | 'Station' | 'Ship';
-  status: 'Active' | 'Neutral' | 'Threat';
+  status: 'Neutral' | 'Ally' | 'Threat';
   coordinates: string;
 }
 
-export const useObjectStore = defineStore('objects', {
-  state: () => ({
-    items: [
-      { id: '1', name: 'AX-741', type: 'Asteroid', status: 'Neutral', coordinates: '0.42.11' },
-      { id: '2', name: 'Vesta-Prime', type: 'Station', status: 'Active', coordinates: '1.09.88' },
-    ] as SpaceObject[],
-  }),
-  actions: {
-    addObject(item: Omit<SpaceObject, 'id'>) {
-      const newObject = { ...item, id: Math.random().toString(36).substring(2, 9) };
-      this.items.push(newObject);
-    },
-    updateObject(id: string, updatedItem: Partial<SpaceObject>) {
-      const index = this.items.findIndex(i => i.id === id);
-      if (index !== -1) this.items[index] = { ...this.items[index], ...updatedItem };
-    },
-    deleteObject(id: string) {
-      this.items = this.items.filter(i => i.id !== id);
-    }
-  }
-});
+interface ObjectsState {
+  objects: SpaceObject[];
+  addObject: (obj: Omit<SpaceObject, 'id'>) => void;
+  updateObject: (id: string, updatedItem: Partial<SpaceObject>) => void;
+  deleteObject: (id: string) => void;
+}
+
+export const useObjectsStore = create<ObjectsState>((set) => ({
+  objects: [
+    { id: 'OBJ-1024', name: 'AX-741', type: 'Asteroid', status: 'Neutral', coordinates: '0.42.11' },
+    { id: 'STA-9901', name: 'Vesta-Prime', type: 'Station', status: 'Ally', coordinates: '1.09.88' },
+    { id: 'SHP-0422', name: 'Kz-Interceptor', type: 'Ship', status: 'Threat', coordinates: '5.12.01' },
+  ],
+  addObject: (obj) => set((state) => ({
+    objects: [
+      ...state.objects,
+      {
+        ...obj,
+        id: `${obj.type === 'Asteroid' ? 'OBJ' : obj.type === 'Station' ? 'STA' : 'SHP'}-${Math.floor(1000 + Math.random() * 9000)}`
+      }
+    ]
+  })),
+  updateObject: (id, updatedItem) => set((state) => ({
+    objects: state.objects.map((obj) => 
+      obj.id === id ? { ...obj, ...updatedItem } : obj
+    )
+  })),
+  deleteObject: (id) => set((state) => ({
+    objects: state.objects.filter((obj) => obj.id !== id)
+  }))
+}));

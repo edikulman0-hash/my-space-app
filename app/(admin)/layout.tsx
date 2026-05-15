@@ -22,7 +22,10 @@ export default function AdminLayout({
           <Link href="/admin" className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg transition-all group">
             <LayoutDashboard size={18} /> Панель управления
           </Link>
-          <Link href="/admin/objects" className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg transition-all">
+         <Link 
+            href="/objects" 
+            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg transition-all"
+          >
             <Database size={18} /> Объекты (CRUD)
           </Link>
         </nav>
