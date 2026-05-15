@@ -94,7 +94,7 @@ export default function AdminDashboard() {
             <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
             UPLINK_ESTABLISHED
           </div>
-          <span className="text-slate-600">STARDATE: 2026.05.14</span>
+          <span className="text-slate-600">STARDATE: 2026.05.15</span>
         </div>
       </header>
       
