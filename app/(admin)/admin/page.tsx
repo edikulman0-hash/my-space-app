@@ -1,146 +1,456 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAdminAuth } from "@/app/hooks/useAdminAuth";
+import { useUserManagement } from "@/app/hooks/useUserManagement";
 import { 
-  DndContext, 
-  closestCenter, 
-  KeyboardSensor, 
-  PointerSensor, 
-  TouchSensor, 
-  useSensor, 
-  useSensors 
-} from '@dnd-kit/core';
-import { 
-  arrayMove, 
-  SortableContext, 
-  sortableKeyboardCoordinates, 
-  rectSortingStrategy, 
-  useSortable 
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Activity, ShieldAlert, Cpu, HardDrive, Terminal } from 'lucide-react';
+  UserPlus, 
+  Search, 
+  Filter, 
+  Edit2, 
+  Trash2, 
+  Check, 
+  X, 
+  Shield, 
+  ShieldAlert, 
+  Terminal, 
+  LogOut,
+  Activity,
+  Server,
+  Cpu
+} from "lucide-react";
 
-const DashboardCard = ({ id, title, icon: Icon, value, color, isDraggable }: any) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled: !isDraggable });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+export default function AdminDashboardPage() {
+  const { handleLogout } = useAdminAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const activeTab = searchParams.get("tab") || "dashboard";
 
-  return (
-    <div ref={setNodeRef} style={style} className="relative group bg-slate-900/40 border border-slate-800 p-6 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] overflow-hidden transition-colors hover:border-blue-500/40">
-      <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-slate-700" />
-      <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-slate-700" />
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 bg-${color}-500/10 rounded-sm border border-${color}-500/20`}>
-          <Icon size={20} className={`text-${color}-500`} />
-        </div>
-        <button {...attributes} {...listeners} className={`text-slate-700 hover:text-slate-400 p-1 touch-none ${isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-wait'}`}>
-          <GripVertical size={18} />
-        </button>
-      </div>
-      <p className="text-slate-500 text-[10px] uppercase font-mono tracking-[0.2em] mb-1">{title}</p>
-      <div className="flex items-baseline gap-2">
-        <p className="text-3xl font-mono font-black tracking-tighter text-slate-200">{value}</p>
-      </div>
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.5)] translate-y-[-100%] group-hover:animate-[scan_2s_linear_infinite]" />
-    </div>
-  );
-};
+  const {
+    searchQuery,
+    setSearchQuery,
+    roleFilter,
+    setRoleFilter,
+    isAddModalOpen,
+    setIsAddModalOpen,
+    isEditModalOpen,
+    setIsEditModalOpen,
+    currentUser,
+    formData,
+    setFormData,
+    filteredUsers,
+    handleAddUser,
+    handleEditClick,
+    handleUpdateUser,
+    handleDeleteUser
+  } = useUserManagement();
 
-export default function AdminDashboard() {
-  const [isMounted, setIsMounted] = useState(false);
-  const [mapAnomalies, setMapAnomalies] = useState<boolean[]>(new Array(100).fill(false));
-  const [items, setItems] = useState([
-    { id: '1', title: 'Objects Tracked', icon: Activity, value: '1,240', color: 'blue' },
-    { id: '2', title: 'Threat Level', icon: ShieldAlert, value: 'LOW', color: 'green' },
-    { id: '3', title: 'System Load', icon: Cpu, value: '24%', color: 'purple' },
-    { id: '4', title: 'Storage Capacity', icon: HardDrive, value: '89.2 TB', color: 'cyan' },
-  ]);
-
-  useEffect(() => { 
-    setIsMounted(true); 
-    
-    const generatedAnomalies = [...Array(100)].map(() => Math.random() > 0.95);
-    setMapAnomalies(generatedAnomalies);
-  }, []);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    if (active && over && active.id !== over.id) {
-      setItems((prev) => {
-        const oldIndex = prev.findIndex((i) => i.id === active.id);
-        const newIndex = prev.findIndex((i) => i.id === over.id);
-        return arrayMove(prev, oldIndex, newIndex);
-      });
-    }
+  // Локальная обёртка для безопасного и чистого выхода на главную страницу без 404
+  const executeLogout = () => {
+    localStorage.removeItem("astro_admin_session");
+    // Оповещаем корневой макет о том, что сессия закрыта
+    window.dispatchEvent(new Event("admin_logout"));
+    // Безопасно редиректим пользователя на главную страницу сайта
+    router.push("/");
   };
 
   return (
-    <div className="p-8 font-sans">
-      <header className="mb-12 flex justify-between items-end border-b border-slate-800 pb-6 relative">
-        <div>
-          <h2 className="text-3xl font-black uppercase tracking-[0.3em] text-slate-100 flex items-center gap-3">
-            <span className="w-8 h-[2px] bg-blue-600 mb-1" />
-            Command Center
-          </h2>
-          <p className="text-slate-500 text-[10px] font-mono mt-2">ACCESS_LEVEL: ALPHA-1 // TERMINAL_ID: 0x9921</p>
-        </div>
-        <div className="flex flex-col items-end gap-2 font-mono text-[10px]">
-          <div className="flex items-center gap-3 text-green-500 bg-green-500/5 px-3 py-1 border border-green-500/20">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-            UPLINK_ESTABLISHED
+    <div className="w-full min-h-screen font-mono bg-slate-950 text-slate-100 selection:bg-red-500 selection:text-white flex flex-col">
+      <div className="container mx-auto px-4 py-12 flex-1 flex flex-col">
+        
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes scan {
+            0% { top: -100%; }
+            100% { top: 200%; }
+          }
+          .group-hover\\:animate-scan:hover::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.4), transparent);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+            animation: scan 1.5s linear infinite;
+          }
+          .group-hover\\:animate-scan-red:hover::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, rgba(239, 68, 68, 0.4), transparent);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+            animation: scan 1.5s linear infinite;
+          }
+        `}} />
+
+        <header className="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-slate-900 pb-6 shrink-0">
+          <div>
+            <h1 className="text-2xl font-black text-slate-100 uppercase tracking-tight flex items-center gap-2">
+              <Terminal className="text-red-500" size={22} /> 
+              {activeTab === "dashboard" ? "Главный Терминал Мониторинга" : "Управление Персоналом Терминала"}
+            </h1>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">
+              {activeTab === "dashboard" 
+                ? "Центральный узел // Телеметрия активности ядра и системных ресурсов" 
+                : "Безопасный шлюз авторизации // Мониторинг прав доступа операторов"
+              }
+            </p>
           </div>
-          <span className="text-slate-600">STARDATE: 2026.05.15</span>
-        </div>
-      </header>
-      
-      <section className="mb-12">
-        {isMounted ? (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={items} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {items.map((item) => <DashboardCard key={item.id} {...item} isDraggable={isMounted} />)}
+          <button
+            onClick={executeLogout}
+            className="flex items-center gap-2 bg-red-950/40 hover:bg-red-900/40 border border-red-800 text-red-400 text-xs uppercase px-4 py-2 transition-colors"
+          >
+            <LogOut size={14} /> Завершить сессию
+          </button>
+        </header>
+
+        {activeTab === "dashboard" && (
+          <div className="space-y-6 flex-1 flex flex-col justify-start">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
+              
+              {/* Карточка 1 */}
+              <div 
+                onDragStart={(e) => e.preventDefault()}
+                className="bg-slate-900/30 border border-slate-900 p-6 relative overflow-hidden group group-hover:animate-scan cursor-grab active:cursor-grabbing active:scale-[0.98] select-none transition-all"
+              >
+                <div className="absolute top-0 right-0 p-4 text-emerald-500"><Activity size={20} /></div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-widest">Статус Системы</div>
+                <div className="text-xl font-black text-emerald-400 mt-2">ONLINE // SECURE</div>
+                <div className="text-[9px] text-slate-600 uppercase tracking-wider mt-1">Все шлюзы авторизации стабильны</div>
               </div>
-            </SortableContext>
-          </DndContext>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {items.map((item) => <DashboardCard key={item.id} {...item} isDraggable={false} />)}
+
+              {/* Карточка 2 */}
+              <div 
+                onDragStart={(e) => e.preventDefault()}
+                className="bg-slate-900/30 border border-slate-900 p-6 relative overflow-hidden group group-hover:animate-scan cursor-grab active:cursor-grabbing active:scale-[0.98] select-none transition-all"
+              >
+                <div className="absolute top-0 right-0 p-4 text-blue-500"><Server size={20} /></div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-widest">Активные Сессии</div>
+                <div className="text-xl font-black text-blue-400 mt-2">{filteredUsers.filter(u => u.status === 'active').length} OPERATORS</div>
+                <div className="text-[9px] text-slate-600 uppercase tracking-wider mt-1">Выделенные токены верифицированы</div>
+              </div>
+
+              {/* Карточка 3 */}
+              <div 
+                onDragStart={(e) => e.preventDefault()}
+                className="bg-slate-900/30 border border-slate-900 p-6 relative overflow-hidden group group-hover:animate-scan-red cursor-grab active:cursor-grabbing active:scale-[0.98] select-none transition-all"
+              >
+                <div className="absolute top-0 right-0 p-4 text-red-500"><Cpu size={20} /></div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-widest">Загрузка Ядра</div>
+                <div className="text-xl font-black text-red-400 mt-2">0.24% SYSLOAD</div>
+                <div className="text-[9px] text-slate-600 uppercase tracking-wider mt-1">Оптимизация NextJS выполнена</div>
+              </div>
+            </div>
+
+            {/* Системный лог */}
+            <div 
+              onDragStart={(e) => e.preventDefault()}
+              className="bg-slate-900/20 border border-slate-900 p-6 relative overflow-hidden group group-hover:animate-scan cursor-grab active:cursor-grabbing active:scale-[0.99] select-none transition-all flex-1 min-h-[150px]"
+            >
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+                <Shield size={14} className="text-blue-500" /> Системный Лог Безопасности
+              </h3>
+              <div className="space-y-2 text-[11px] text-slate-500">
+                <div className="flex gap-4"><span className="text-blue-500">[15:33:10]</span> <span>AUTH_SUCCESS: Сессия администратора инициализирована на хосте.</span></div>
+                <div className="flex gap-4"><span className="text-blue-500">[15:31:02]</span> <span>ROUTE_CLEANUP: Устаревшие modules авторизации успешно декомпилированы.</span></div>
+                <div className="flex gap-4"><span className="text-emerald-500">[15:30:00]</span> <span>CORE_READY: Система Astro готова к обработке CRUD запросов.</span></div>
+              </div>
+            </div>
           </div>
         )}
-      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 border border-slate-800 bg-slate-900/20 p-6 relative h-[400px]">
-          <h3 className="text-[10px] font-mono text-blue-500 mb-4 tracking-widest uppercase">Sector_Visual_Map</h3>
-          <div className="absolute inset-0 m-12 grid grid-cols-10 grid-rows-10 border border-blue-500/10">
-            {[...Array(100)].map((_, i) => (
-              <div key={i} className="border-[0.5px] border-blue-500/5 hover:bg-blue-500/10 transition-colors cursor-crosshair relative group">
-                {mapAnomalies[i] && <div className="absolute inset-1 bg-red-500 animate-pulse shadow-[0_0_10px_red]" />}
+        {activeTab === "users" && (
+          <div className="flex-1 flex flex-col justify-start">
+            <div className="bg-slate-950 border border-slate-900 p-4 mb-6 flex flex-wrap items-center justify-between gap-4 shrink-0">
+              <div className="flex flex-wrap items-center gap-4 flex-1 max-w-2xl">
+                <div className="relative flex-1 min-w-[240px]">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Поиск оператора по ID, имени или e-mail..."
+                    className="w-full bg-slate-900 border border-slate-800 pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-red-500/50"
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-none">
+                  <Filter size={12} className="text-slate-500" />
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value as any)}
+                    className="bg-transparent text-xs text-slate-300 focus:outline-none cursor-pointer uppercase font-mono"
+                  >
+                    <option value="all" className="bg-slate-950">Все Сигнатуры</option>
+                    <option value="admin" className="bg-slate-950">Администраторы</option>
+                    <option value="operator" className="bg-slate-950">Операторы</option>
+                    <option value="analyst" className="bg-slate-950">Аналитики</option>
+                  </select>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="border border-slate-800 bg-black p-4 font-mono text-[10px] flex flex-col h-[400px]">
-          <div className="flex items-center gap-2 text-slate-500 mb-4 border-b border-slate-800 pb-2">
-            <Terminal size={12} />
-            <span>SYSTEM_LOGS_STDOUT</span>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-red-950/40 hover:bg-red-900/40 border border-red-700/50 text-red-400 font-mono text-xs uppercase tracking-wider px-4 py-2 transition-colors flex items-center gap-2"
+              >
+                <UserPlus size={14} /> Регистрация Operator
+              </button>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-900 overflow-x-auto flex-1 min-h-[200px]">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-900 bg-slate-900/40 text-[10px] text-slate-500 uppercase tracking-widest">
+                    <th className="p-4">Код Доступа</th>
+                    <th className="p-4">Сотрудник</th>
+                    <th className="p-4">Уровень (Роль)</th>
+                    <th className="p-4">Статус Узла</th>
+                    <th className="p-4">Активность</th>
+                    <th className="p-4 text-right">Контроль</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-900/60 text-xs">
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-600 uppercase tracking-wider">
+                        Записи по заданным параметров ядра отсутствуют
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-slate-900/20 transition-colors group">
+                        <td className="p-4 font-bold text-slate-400 group-hover:text-red-400 transition-colors">
+                          {user.id}
+                        </td>
+                        <td className="p-4">
+                          <div className="font-sans font-bold text-slate-200">{user.name}</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">{user.email}</div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-0.5 text-[10px] uppercase font-bold border ${
+                            user.role === "admin" ? "bg-red-500/5 border-red-500/20 text-red-400" :
+                            user.role === "operator" ? "bg-blue-500/5 border-blue-500/20 text-blue-400" :
+                            "bg-amber-500/5 border-amber-500/20 text-amber-400"
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className={`flex items-center gap-1.5 text-[10px] uppercase ${
+                            user.status === "active" ? "text-green-500" : "text-slate-600 line-through"
+                          }`}>
+                            {user.status === "active" ? <Check size={12} /> : <X size={12} />}
+                            {user.status === "active" ? "Online" : "Suspended"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-500 text-[11px]">
+                          {user.lastActive}
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleEditClick(user)}
+                              className="p-1.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+                              title="Модифицировать параметры"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-1.5 bg-slate-900 border border-slate-800 text-slate-500 hover:text-red-500 hover:border-red-950 transition-colors"
+                              title="Ограничить доступ"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-2 text-slate-400">
-            <p className="text-green-500">[OK] Kernel initialized...</p>
-            <p>[INFO] Tracking 1240 satellites</p>
-            <p className="text-yellow-500">[WARN] Anomaly in Sector 7-G</p>
-            <p className="text-red-500">[ERR] Unauthorized access attempt 192.168.1.1</p>
-            <p>[INFO] Deep space scan: 89%</p>
-            <p className="animate-pulse">_</p>
+        )}
+
+      </div>
+
+      {/* МОДАЛЬНОЕ ОКНО: ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-slate-950 border border-slate-900 p-6 relative">
+            <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-slate-700" />
+            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-slate-700" />
+            
+            <div className="flex justify-between items-center border-b border-slate-900 pb-3 mb-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <Shield size={16} className="text-red-500" /> Ввод новой сигнатуры доступа
+              </h3>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-500 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddUser} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Имя сотрудника</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Имя Фамилия..."
+                  className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500/50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Защищенный E-mail</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="username@astro.control"
+                  className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500/50"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Класс Доступа</label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-300 focus:outline-none uppercase"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="operator">Operator</option>
+                    <option value="analyst">Analyst</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Статус инициализации</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-300 focus:outline-none uppercase"
+                  >
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-slate-900 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs uppercase transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-red-950/40 hover:bg-red-900/40 border border-red-800 text-red-400 text-xs uppercase font-bold transition-colors"
+                >
+                  Записать сигнатуру
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-slate-950 border border-slate-900 p-6 relative">
+            <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-slate-700" />
+            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-slate-700" />
+            
+            <div className="flex justify-between items-center border-b border-slate-900 pb-3 mb-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <ShieldAlert size={16} className="text-amber-500" /> Изменение прав протокола {currentUser?.id}
+              </h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-500 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Имя сотрудника</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500/50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Защищенный E-mail</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500/50"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Класс Доступа</label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-300 focus:outline-none uppercase"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="operator">Operator</option>
+                    <option value="analyst">Analyst</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-500 uppercase tracking-widest block">Статус узла</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full bg-slate-900 border border-slate-800 px-3 py-2 text-xs text-slate-300 focus:outline-none uppercase"
+                  >
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-slate-900 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs uppercase transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-950/40 hover:bg-amber-900/40 border border-amber-800 text-amber-400 text-xs uppercase font-bold transition-colors"
+                >
+                  Обновить конфигурацию
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
